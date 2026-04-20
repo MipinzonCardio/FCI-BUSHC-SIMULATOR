@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador Bus FCI — Fundación Cardioinfantil</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; color: #1a1a1a; min-height: 100vh; padding: 24px 16px; }
+  .container { max-width: 680px; margin: 0 auto; }
+  .header { margin-bottom: 24px; }
+  .header-top { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+  .logo { width: 36px; height: 36px; background: #185FA5; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .logo svg { width: 20px; height: 20px; fill: white; }
+  h1 { font-size: 18px; font-weight: 600; color: #1a1a1a; }
+  .subtitle { font-size: 13px; color: #666; }
+  .card { background: white; border-radius: 12px; border: 1px solid #e5e5e0; padding: 20px; margin-bottom: 16px; }
+  .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 0; }
+  select { font-size: 13px; padding: 8px 12px; border-radius: 8px; border: 1px solid #d5d5d0; background: white; color: #1a1a1a; flex: 1; min-width: 200px; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 30px; }
+  .btn { font-size: 13px; font-weight: 500; padding: 8px 18px; border-radius: 8px; border: 1px solid #d5d5d0; background: white; color: #1a1a1a; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .btn:hover { background: #f5f5f0; }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+  .btn-reset { color: #888; border-color: #e5e5e0; }
+  .progress-wrap { margin-bottom: 14px; }
+  .progress-bar { display: flex; gap: 3px; margin-bottom: 6px; }
+  .prog-step { height: 3px; flex: 1; border-radius: 2px; background: #e5e5e0; transition: background 0.3s; }
+  .prog-step.done { background: #185FA5; }
+  .prog-step.active { background: #378ADD; }
+  .prog-label { font-size: 11px; color: #999; text-align: right; }
+  .explanation { background: #f0f6ff; border-left: 3px solid #185FA5; border-radius: 0 8px 8px 0; padding: 12px 16px; margin-bottom: 14px; min-height: 72px; }
+  .exp-title { font-size: 13px; font-weight: 600; color: #0C447C; margin-bottom: 4px; }
+  .exp-body { font-size: 12px; color: #444; line-height: 1.55; }
+  .layers { display: flex; flex-direction: column; gap: 5px; margin-bottom: 16px; }
+  .layer-row { display: flex; align-items: stretch; gap: 8px; }
+  .layer-label { width: 82px; flex-shrink: 0; font-size: 10px; font-weight: 600; color: #999; display: flex; align-items: center; text-align: right; justify-content: flex-end; padding-right: 8px; line-height: 1.3; text-transform: uppercase; letter-spacing: 0.3px; }
+  .layer-box { flex: 1; border-radius: 8px; border: 1.5px solid #e5e5e0; padding: 9px 13px; font-size: 12px; transition: all 0.3s ease; min-height: 50px; display: flex; flex-direction: column; justify-content: center; background: #fafaf8; opacity: 0.45; }
+  .layer-box.waiting { opacity: 1; background: #fafaf8; border-color: #d5d5d0; }
+  .layer-box.active-api { background: #E6F1FB; border-color: #185FA5; opacity: 1; }
+  .layer-box.active-core { background: #EEEDFE; border-color: #534AB7; opacity: 1; }
+  .layer-box.active-con { background: #E1F5EE; border-color: #0F6E56; opacity: 1; }
+  .layer-box.active-com { background: #FAEEDA; border-color: #854F0B; opacity: 1; }
+  .layer-box.active-ext { background: #FAECE7; border-color: #993C1D; opacity: 1; }
+  .layer-box.done-ok { background: #eaf3de; border-color: #3B6D11; opacity: 1; }
+  .layer-box.done-err { background: #FCEBEB; border-color: #A32D2D; opacity: 1; }
+  .layer-name { font-weight: 600; font-size: 13px; color: #1a1a1a; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .layer-detail { font-size: 11px; color: #666; margin-top: 3px; min-height: 14px; line-height: 1.4; font-family: 'SF Mono', 'Fira Code', monospace; }
+  .badge { display: inline-block; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .b-api { background: #E6F1FB; color: #0C447C; }
+  .b-core { background: #EEEDFE; color: #3C3489; }
+  .b-con { background: #E1F5EE; color: #085041; }
+  .b-com { background: #FAEEDA; color: #633806; }
+  .b-ext { background: #FAECE7; color: #712B13; }
+  .arrow-row { display: flex; padding-left: 90px; }
+  .arrow-down { width: 2px; height: 14px; margin-left: 24px; border-radius: 1px; background: #e5e5e0; transition: background 0.3s; }
+  .arrow-down.lit { background: #378ADD; }
+  .arrow-down.lit-back { background: #3B6D11; }
+  .nav-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+  .step-counter { font-size: 12px; color: #999; }
+  .btn-nav { font-size: 13px; font-weight: 500; padding: 9px 22px; border-radius: 8px; cursor: pointer; transition: all 0.15s; border: 1px solid; }
+  .btn-prev-nav { background: white; border-color: #d5d5d0; color: #444; }
+  .btn-prev-nav:hover:not(:disabled) { background: #f5f5f0; }
+  .btn-next-nav { background: #185FA5; border-color: #185FA5; color: white; }
+  .btn-next-nav:hover:not(:disabled) { background: #0C447C; }
+  .btn-next-nav:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-prev-nav:disabled { opacity: 0.35; cursor: not-allowed; }
+  .multi-note { font-size: 11px; color: #854F0B; background: #FAEEDA; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; display: none; line-height: 1.5; }
+  .footer { text-align: center; font-size: 11px; color: #bbb; margin-top: 24px; }
+  @media (max-width: 480px) {
+    .layer-label { width: 68px; font-size: 9px; }
+    .layer-name { font-size: 12px; }
+    h1 { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="header-top">
+      <div class="logo">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+      </div>
+      <div>
+        <h1>Simulador del Bus FCI</h1>
+        <div class="subtitle">Fundación Cardioinfantil — IRIS Health Connect</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="controls">
+      <select id="sel-integ" onchange="resetFlow()">
+        <option value="censo">Censo hospitalario (Servinte)</option>
+        <option value="medicamentos">Medicamentos (Servinte)</option>
+        <option value="admisiones">Admisiones (Servinte)</option>
+        <option value="epimed">Monitor UCI (Epimed REST)</option>
+        <option value="multi">Paciente completo (multi-fuente)</option>
+        <option value="error">Simular error de conexión</option>
+      </select>
+      <button class="btn btn-reset" onclick="resetFlow()">Reiniciar</button>
+    </div>
+  </div>
+
+  <div class="multi-note" id="multi-note">
+    Flujo multi-fuente: el Router invoca Servinte y TrakCare en paralelo y consolida las respuestas con Core.DTL.MergePaciente antes de responder al consumidor.
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-bar" id="progress-bar"></div>
+    <div class="prog-label" id="prog-label">Paso 0 / 8</div>
+  </div>
+
+  <div class="explanation" id="explanation">
+    <div class="exp-title" id="exp-title">Selecciona un flujo y presiona Siguiente</div>
+    <div class="exp-body" id="exp-body">Elige la integración que quieres simular y presiona el botón Siguiente para avanzar paso a paso por cada capa del bus.</div>
+  </div>
+
+  <div class="layers">
+    <div class="layer-row">
+      <div class="layer-label">Consumidor</div>
+      <div class="layer-box" id="box-client">
+        <div class="layer-name">Haily <span class="badge b-ext">externo</span></div>
+        <div class="layer-detail" id="det-client">—</div>
+      </div>
+    </div>
+    <div class="arrow-row"><div class="arrow-down" id="arr-0"></div></div>
+    <div class="layer-row">
+      <div class="layer-label">Capa 1 API</div>
+      <div class="layer-box" id="box-api">
+        <div class="layer-name">FCI.API.REST <span class="badge b-api">API</span></div>
+        <div class="layer-detail" id="det-api">—</div>
+      </div>
+    </div>
+    <div class="arrow-row"><div class="arrow-down" id="arr-1"></div></div>
+    <div class="layer-row">
+      <div class="layer-label">Capa 2 Core</div>
+      <div class="layer-box" id="box-router">
+        <div class="layer-name">FCI.Core.Router <span class="badge b-core">BP</span></div>
+        <div class="layer-detail" id="det-router">—</div>
+      </div>
+    </div>
+    <div class="arrow-row"><div class="arrow-down" id="arr-2"></div></div>
+    <div class="layer-row">
+      <div class="layer-label">Capa 3 BO</div>
+      <div class="layer-box" id="box-bo">
+        <div class="layer-name" id="name-bo">BO.Operacion <span class="badge b-con">BO</span></div>
+        <div class="layer-detail" id="det-bo">—</div>
+      </div>
+    </div>
+    <div class="arrow-row"><div class="arrow-down" id="arr-3"></div></div>
+    <div class="layer-row">
+      <div class="layer-label">Query</div>
+      <div class="layer-box" id="box-query">
+        <div class="layer-name" id="name-query">Query.* <span class="badge b-con">SQL/HTTP</span></div>
+        <div class="layer-detail" id="det-query">—</div>
+      </div>
+    </div>
+    <div class="arrow-row"><div class="arrow-down" id="arr-4"></div></div>
+    <div class="layer-row">
+      <div class="layer-label">Commons</div>
+      <div class="layer-box" id="box-commons">
+        <div class="layer-name">FCI.Commons.Mapper <span class="badge b-com">commons</span></div>
+        <div class="layer-detail" id="det-commons">—</div>
+      </div>
+    </div>
+    <div class="arrow-row"><div class="arrow-down" id="arr-5"></div></div>
+    <div class="layer-row">
+      <div class="layer-label">BD externa</div>
+      <div class="layer-box" id="box-db">
+        <div class="layer-name" id="name-db">Informix (Servinte) <span class="badge b-ext">externo</span></div>
+        <div class="layer-detail" id="det-db">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="nav-row">
+    <span class="step-counter" id="step-counter">Paso 0 de 8</span>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-nav btn-prev-nav" id="btn-prev" onclick="prevStep()" disabled>Anterior</button>
+      <button class="btn-nav btn-next-nav" id="btn-next" onclick="nextStep()">Siguiente</button>
+    </div>
+  </div>
+
+  <div class="footer">Fundación Cardioinfantil · Proyecto Sístole · Bus de Integración FCI</div>
+</div>
+
+<script>
+const flows = {
+  censo: {
+    bo:'Servinte.Haily.BO', query:'Query.Censo', db:'Informix (Servinte)',
+    iface:'ICenso', rows:47, endpoint:'GET /api/censo', multi:false, error:false,
+    steps:[
+      {box:'client',cls:'active-ext',det:'GET /api/censo → bus.lacardio.org',arr:null,back:false,
+       title:'Haily envía la petición HTTP',
+       body:'El sistema Haily hace un GET /api/censo al bus. Esta es la única capa expuesta al exterior — ningún sistema accede directamente a Informix.'},
+      {box:'api',cls:'active-api',det:'Recibe HTTP, arma CensoRequest, envía al Router',arr:'arr-0',back:false,
+       title:'API.REST recibe y arma el mensaje',
+       body:'La capa API no tiene lógica de negocio. Convierte la petición HTTP en un FCI.Core.Msg.CensoRequest estándar y lo envía al Router. No sabe nada de Informix.'},
+      {box:'router',cls:'active-core',det:'Origen="Haily" → Servinte.Haily.BO.Operacion',arr:'arr-1',back:false,
+       title:'Core.Router decide a qué conector llamar',
+       body:'El Router evalúa el request y según la configuración activa decide el destino. Aquí es donde se puede cambiar de Servinte a TrakCare sin tocar la API ni el consumidor.'},
+      {box:'bo',cls:'active-con',det:'implements ICenso — delega a Query.Censo',arr:'arr-2',back:false,
+       title:'BO.Operacion — liviano, solo delega',
+       body:'El BO implementa la interfaz ICenso del Core. No contiene SQL ni lógica — su único rol es recibir la solicitud y llamar a Query.Censo.Execute(adapter). El BO no supera 30 líneas.'},
+      {box:'query',cls:'active-con',det:'GetQuery() → SELECT unique nvl(pacap1...) FROM abpac...',arr:'arr-3',back:false,
+       title:'Query.Censo ejecuta el SQL',
+       body:'Clase independiente con 4 métodos: GetQuery() retorna el SQL, Execute() lo corre contra el adapter, MapRow() convierte cada fila, ToResponse() arma la respuesta final.'},
+      {box:'db',cls:'active-ext',det:'EnsLib.SQL.OutboundAdapter → Informix ejecutando query...',arr:'arr-4',back:false,
+       title:'Informix procesa la consulta',
+       body:'El adapter EnsLib.SQL.OutboundAdapter envía el SQL a Informix y espera el ResultSet. La conexión es compartida — configurada en Servinte.Adapter.Config para todas las integraciones del sistema.'},
+      {box:'commons',cls:'active-com',det:'SafeGetData() × 47 filas — FormatDate(), NormalizeName()',arr:'arr-5',back:false,
+       title:'Commons.Mapper transforma las filas',
+       body:'Por cada fila del ResultSet se llama MapRow() que usa SafeGetData() para evitar nulls, NormalizeName() para limpiar nombres con espacios y FormatDate() para convertir fechas de Informix a ISO 8601.'},
+      {box:'client',cls:'done-ok',det:'200 OK — 47 pacientes en censo',arr:null,back:true,
+       title:'Respuesta llega a Haily',
+       body:'La respuesta viaja de vuelta por todas las capas. Haily recibe un JSON con 47 pacientes. Ninguna capa existente tuvo que modificarse para responder esta consulta.'}
+    ]
+  },
+  medicamentos: {
+    bo:'Servinte.Haily.BO', query:'Query.Medicamentos', db:'Informix (Servinte)',
+    iface:'IMedicamentos', rows:31, endpoint:'GET /api/medicamentos', multi:false, error:false,
+    steps:[
+      {box:'client',cls:'active-ext',det:'GET /api/medicamentos → bus.lacardio.org',arr:null,back:false,
+       title:'Haily solicita medicamentos activos',
+       body:'Petición HTTP al bus para obtener las órdenes de medicamentos activas. El flujo es idéntico al de censo — cambia solo el conector y la query.'},
+      {box:'api',cls:'active-api',det:'Arma MedicamentoRequest, envía al Router',arr:'arr-0',back:false,
+       title:'API arma el MedicamentoRequest',
+       body:'La capa API convierte el HTTP en un FCI.Core.Msg.MedicamentoRequest. El mismo Dispatch del Censo aplica — no hay código duplicado por tipo de consulta.'},
+      {box:'router',cls:'active-core',det:'→ Servinte.Haily.BO (implementa IMedicamentos)',arr:'arr-1',back:false,
+       title:'Router enruta a Servinte.Haily',
+       body:'El Router sabe que IMedicamentos para Haily está en Servinte.Haily.BO. Si en el futuro TrakCare también implementa esta interfaz, el Router puede redirigir sin tocar la API.'},
+      {box:'bo',cls:'active-con',det:'implements IMedicamentos — delega a Query.Medicamentos',arr:'arr-2',back:false,
+       title:'BO delega a Query.Medicamentos',
+       body:'El mismo BO que maneja el Censo también maneja Medicamentos — implementa ambas interfaces. Solo delega: ConsultarMedicamentos() llama Query.Medicamentos.Execute(adapter).'},
+      {box:'query',cls:'active-con',det:'SELECT ORMOVULT INNER JOIN ORACT WHERE movultcan="N" AND movultest="OR"...',arr:'arr-3',back:false,
+       title:'Query.Medicamentos — SQL aislado',
+       body:'El SQL de medicamentos vive solo aquí. Si cambia el esquema de Informix solo se toca esta clase. El BO y el Router nunca saben del cambio.'},
+      {box:'db',cls:'active-ext',det:'Informix ejecuta query sobre ORMOVULT, ORACT, ABPAC...',arr:'arr-4',back:false,
+       title:'Informix retorna órdenes activas',
+       body:'La misma conexión compartida del Adapter.Config de Servinte. No se abre una conexión nueva por integración — todas las integraciones de Servinte comparten el pool.'},
+      {box:'commons',cls:'active-com',det:'MapRow() × 31 filas — 14 columnas: Dosis, Via, Frecuencia...',arr:'arr-5',back:false,
+       title:'Mapper convierte 14 columnas por fila',
+       body:'Cada fila tiene 14 campos: PacienteId, TipoId, Dosis, Unidad, Frecuencia, Duración, Total, Cantidad, Vía y más. SafeGetData() maneja cualquier nulo sin que el flujo falle.'},
+      {box:'client',cls:'done-ok',det:'200 OK — 31 órdenes de medicamentos',arr:null,back:true,
+       title:'31 órdenes retornadas a Haily',
+       body:'Flujo completado. La misma arquitectura, el mismo Router, el mismo BO. Solo cambió la Query y el tipo de mensaje del Core.'}
+    ]
+  },
+  admisiones: {
+    bo:'Servinte.Haily.BO', query:'Query.Admisiones', db:'Informix (Servinte)',
+    iface:'IAdmisiones', rows:18, endpoint:'GET /api/admisiones', multi:false, error:false,
+    steps:[
+      {box:'client',cls:'active-ext',det:'GET /api/admisiones',arr:null,back:false,
+       title:'Solicitud de admisiones activas',
+       body:'Haily necesita la lista de admisiones, egresos y traslados del día. El patrón de flujo es idéntico a los anteriores.'},
+      {box:'api',cls:'active-api',det:'Arma AdmisionRequest',arr:'arr-0',back:false,
+       title:'API arma el AdmisionRequest',
+       body:'Mismo patrón — la capa API no sabe que el backend es Informix. Solo arma el mensaje estándar del Core y lo envía al Router.'},
+      {box:'router',cls:'active-core',det:'→ Servinte.Haily.BO (implementa IAdmisiones)',arr:'arr-1',back:false,
+       title:'Router enruta correctamente',
+       body:'El Router identifica que IAdmisiones para este consumidor está implementado en Servinte.Haily.BO y le envía el request.'},
+      {box:'bo',cls:'active-con',det:'implements IAdmisiones — delega a Query.Admisiones',arr:'arr-2',back:false,
+       title:'BO delega a Query.Admisiones',
+       body:'El BO no tiene ninguna lógica especial para admisiones vs censo. Todos los métodos siguen el mismo patrón de delegación.'},
+      {box:'query',cls:'active-con',det:'SELECT inpac, abpac, hiepiact WHERE epiactest="A"...',arr:'arr-3',back:false,
+       title:'Query.Admisiones ejecuta',
+       body:'Query independiente con su propio SQL sobre las tablas de admisiones de Informix. Totalmente aislado — un cambio aquí no afecta ningún otro flujo.'},
+      {box:'db',cls:'active-ext',det:'Informix retorna admisiones activas...',arr:'arr-4',back:false,
+       title:'Informix retorna los datos',
+       body:'Misma conexión compartida. El adapter gestiona el pool de conexiones configurado en Servinte.Adapter.Config.'},
+      {box:'commons',cls:'active-com',det:'MapRow() × 18 admisiones — FormatDate() en fechas de ingreso',arr:'arr-5',back:false,
+       title:'Mapper convierte las admisiones',
+       body:'SafeGetData() y FormatDate() convierten las fechas de Informix. Mismo Commons, mismo Mapper que usan todas las integraciones del bus.'},
+      {box:'client',cls:'done-ok',det:'200 OK — 18 admisiones activas',arr:null,back:true,
+       title:'18 admisiones retornadas',
+       body:'Flujo completado. Tres integraciones distintas (Censo, Medicamentos, Admisiones) — mismo patrón, mismo BO, mismas capas. Solo cambia la Query.'}
+    ]
+  },
+  epimed: {
+    bo:'Epimed.BO', query:'Query.MonitorUCI', db:'Epimed REST API',
+    iface:'IMonitorUCI', rows:12, endpoint:'GET /api/uci/monitor', multi:false, error:false,
+    steps:[
+      {box:'client',cls:'active-ext',det:'GET /api/uci/monitor',arr:null,back:false,
+       title:'Solicitud de pacientes UCI',
+       body:'Un consumidor pide el estado de pacientes en UCI. Este flujo usa un conector REST en vez de SQL — Epimed expone una API HTTP, no una base de datos directa.'},
+      {box:'api',cls:'active-api',det:'Arma MonitorUCIRequest',arr:'arr-0',back:false,
+       title:'API recibe y arma el request',
+       body:'Igual que los otros flujos — la capa API no sabe si el backend es SQL o REST. Solo arma el mensaje estándar del Core y lo envía al Router.'},
+      {box:'router',cls:'active-core',det:'→ Epimed.BO (implementa IMonitorUCI)',arr:'arr-1',back:false,
+       title:'Router enruta al conector Epimed',
+       body:'El Router envía a Epimed.BO. Este conector usa EnsLib.HTTP.OutboundAdapter en vez de SQL — el cambio es completamente transparente para la capa API y el consumidor.'},
+      {box:'bo',cls:'active-con',det:'implements IMonitorUCI — delega a Query.MonitorUCI',arr:'arr-2',back:false,
+       title:'BO de Epimed delega a Query',
+       body:'El patrón es idéntico al de Servinte — el BO no sabe si la query va a Informix o a una API REST. Solo delega a Query.MonitorUCI.Execute(adapter).'},
+      {box:'query',cls:'active-con',det:'GET https://epimed.api/patients — EnsLib.HTTP.OutboundAdapter',arr:'arr-3',back:false,
+       title:'Query.MonitorUCI llama la API REST',
+       body:'En vez de SQL, este Query hace un HTTP GET a la API de Epimed. El método Execute() usa el adapter HTTP. El patrón GetQuery/Execute/MapRow/ToResponse es exactamente el mismo.'},
+      {box:'db',cls:'active-ext',det:'Epimed API responde JSON con pacientes UCI...',arr:'arr-4',back:false,
+       title:'Epimed retorna los datos UCI',
+       body:'La API externa de Epimed responde con un JSON. El adapter HTTP gestiona la autenticación y el timeout configurados en Epimed.Adapter.Config.'},
+      {box:'commons',cls:'active-com',det:'Mapper.RSToObject() — JSON → PacienteUCIItem × 12',arr:'arr-5',back:false,
+       title:'Mapper convierte JSON a objetos',
+       body:'Commons.Mapper funciona igual para REST que para SQL. MapRow() convierte cada elemento del JSON en un PacienteUCIItem del dominio del bus.'},
+      {box:'client',cls:'done-ok',det:'200 OK — 12 pacientes UCI',arr:null,back:true,
+       title:'12 pacientes UCI retornados',
+       body:'Flujo REST completado. El consumidor recibió los datos sin saber si vinieron de SQL o de una API — esa abstracción la provee la arquitectura de capas del bus.'}
+    ]
+  },
+  multi: {
+    bo:'Servinte.Haily.BO + TrakCare.Haily.BO', query:'Query.Demograficos + Query.DatosClinicos',
+    db:'Informix + Caché/IRIS', iface:'ICenso + IMedicamentos', rows:1,
+    endpoint:'GET /api/paciente-completo', multi:true, error:false,
+    steps:[
+      {box:'client',cls:'active-ext',det:'GET /api/paciente-completo?historia=123456',arr:null,back:false,
+       title:'Haily pide el paciente completo',
+       body:'Esta integración necesita datos de DOS sistemas: demográficos de Servinte y clínicos de TrakCare. El consumidor no sabe de dónde vienen — solo pide el recurso.'},
+      {box:'api',cls:'active-api',det:'Arma PacienteRequest, envía al Router',arr:'arr-0',back:false,
+       title:'API arma un solo request',
+       body:'La capa API arma un único PacienteRequest. No sabe que la respuesta vendrá de dos sistemas distintos — esa complejidad está encapsulada en el Router.'},
+      {box:'router',cls:'active-core',det:'Flujo multi-fuente: Servinte.Haily + TrakCare.Haily en paralelo',arr:'arr-1',back:false,
+       title:'Router orquesta los dos conectores',
+       body:'El Router identifica que este flujo es multi-fuente. Invoca Servinte.Haily.BO y TrakCare.Haily.BO de forma independiente. Los conectores NO se conocen entre sí.'},
+      {box:'bo',cls:'active-con',det:'Servinte.Haily.BO + TrakCare.Haily.BO — en paralelo',arr:'arr-2',back:false,
+       title:'Dos BOs ejecutan en paralelo',
+       body:'Cada BO trabaja con su propio adapter. Servinte usa Informix, TrakCare usa Caché/IRIS. Si uno falla, el Router puede manejar el error parcial sin tumbar todo el flujo.'},
+      {box:'query',cls:'active-con',det:'Query.Demograficos (Informix) + Query.DatosClinicos (Caché/IRIS)',arr:'arr-3',back:false,
+       title:'Dos queries ejecutan simultáneamente',
+       body:'Cada query tiene su propio SQL y su propio mapper. El tiempo total es el del más lento de los dos — no la suma — porque corren en paralelo.'},
+      {box:'db',cls:'active-ext',det:'Informix + Caché/IRIS responden simultáneamente...',arr:'arr-4',back:false,
+       title:'Dos sistemas responden',
+       body:'Los dos ResultSets llegan al Router. La conexión a Informix viene de Servinte.Adapter.Config y la de Caché/IRIS de TrakCare.Adapter.Config — ambas compartidas e independientes.'},
+      {box:'commons',cls:'active-com',det:'Mapper × 2 fuentes + Core.DTL.MergePaciente consolida',arr:'arr-5',back:false,
+       title:'Commons.Mapper + DTL.MergePaciente',
+       body:'Cada query mapea su ResultSet por separado con Commons.Mapper. Luego Core.DTL.MergePaciente combina los dos objetos en un único PacienteCompletoResponse.'},
+      {box:'client',cls:'done-ok',det:'200 OK — PacienteCompleto (Servinte + TrakCare consolidado)',arr:null,back:true,
+       title:'Paciente completo retornado',
+       body:'Haily recibe un objeto unificado. Si mañana se reemplaza TrakCare, solo cambia ese conector y el DTL de merge — la API, Servinte y el consumidor quedan completamente intactos.'}
+    ]
+  },
+  error: {
+    bo:'Servinte.Haily.BO', query:'Query.Censo', db:'Informix (Servinte)',
+    iface:'ICenso', rows:0, endpoint:'GET /api/censo', multi:false, error:true,
+    steps:[
+      {box:'client',cls:'active-ext',det:'GET /api/censo → bus.lacardio.org',arr:null,back:false,
+       title:'Petición normal al bus',
+       body:'La petición llega igual que siempre. Ni el consumidor ni las capas superiores saben que hay un problema en Informix en este momento.'},
+      {box:'api',cls:'active-api',det:'Arma CensoRequest, envía al Router',arr:'arr-0',back:false,
+       title:'API procesa normalmente',
+       body:'La capa API no tiene forma de saber que Informix está caído. Arma el CensoRequest y lo envía al Router como en cualquier otra petición.'},
+      {box:'router',cls:'active-core',det:'→ Servinte.Haily.BO',arr:'arr-1',back:false,
+       title:'Router enruta al conector',
+       body:'El Router envía al conector correcto. El error todavía no se ha manifestado — ocurrirá más abajo cuando el adapter intente conectarse a Informix.'},
+      {box:'bo',cls:'active-con',det:'Delega a Query.Censo.Execute(adapter)...',arr:'arr-2',back:false,
+       title:'BO delega a Query normalmente',
+       body:'El BO llama a Query.Censo.Execute(adapter). El adapter intentará conectarse a Informix y aquí es donde ocurrirá el fallo de conexión.'},
+      {box:'query',cls:'active-con',det:'ExecuteQuery() — esperando conexión a Informix (timeout 300ms)...',arr:'arr-3',back:false,
+       title:'Query intenta ejecutar el SQL',
+       body:'El adapter intenta abrir la conexión a Informix. Después del timeout configurado (300ms), la conexión falla y lanza un error SQL connection refused hacia Query.Censo.'},
+      {box:'db',cls:'done-err',det:'ERROR: connection timeout — Informix no responde',arr:'arr-4',back:false,
+       title:'Informix no responde',
+       body:'La base de datos está caída o inaccesible. El adapter lanza el error hacia Query.Censo, que lo captura y lo pasa a Commons.ErrorHandler para su clasificación.'},
+      {box:'commons',cls:'done-err',det:'ErrorHandler.HandleSQLError() → clasifica → Logger.Error() → 503',arr:'arr-5',back:false,
+       title:'Commons.ErrorHandler captura el error',
+       body:'HandleSQLError() clasifica el error (timeout vs connection refused), lo registra con Commons.Logger y genera una respuesta de error estándar con código 503. Todos los conectores usan el mismo handler.'},
+      {box:'client',cls:'done-err',det:'503 Service Unavailable — Informix no disponible',arr:null,back:true,
+       title:'Haily recibe 503 con mensaje claro',
+       body:'El error llega formateado y consistente. El consumidor siempre recibe la misma estructura de error sin importar qué sistema falló — eso lo garantiza el ErrorHandler centralizado en Commons.'}
+    ]
+  }
+};
+
+let currentStep = -1;
+let currentFlow = null;
+
+function buildProgressBar(count) {
+  const bar = document.getElementById('progress-bar');
+  bar.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const d = document.createElement('div');
+    d.className = 'prog-step';
+    d.id = 'ps-' + i;
+    bar.appendChild(d);
+  }
+}
+
+function updateProgress(step, total) {
+  for (let i = 0; i < total; i++) {
+    const el = document.getElementById('ps-' + i);
+    if (!el) continue;
+    el.className = 'prog-step' + (i < step ? ' done' : i === step ? ' active' : '');
+  }
+  document.getElementById('prog-label').textContent = 'Paso ' + (step + 1) + ' / ' + total;
+  document.getElementById('step-counter').textContent = 'Paso ' + (step + 1) + ' de ' + total;
+}
+
+function setBox(id, cls, det) {
+  const box = document.getElementById('box-' + id);
+  if (box) box.className = 'layer-box ' + cls;
+  const detEl = document.getElementById('det-' + id);
+  if (detEl && det !== undefined) detEl.textContent = det;
+}
+
+function setArrow(id, cls) {
+  const el = document.getElementById(id);
+  if (el) el.className = 'arrow-down ' + (cls || '');
+}
+
+function resetFlow() {
+  currentStep = -1;
+  currentFlow = flows[document.getElementById('sel-integ').value];
+  const f = currentFlow;
+
+  document.getElementById('multi-note').style.display = f.multi ? 'block' : 'none';
+  document.getElementById('name-bo').innerHTML = f.bo + ' <span class="badge b-con">BO</span>';
+  document.getElementById('name-query').innerHTML = f.query + ' <span class="badge b-con">SQL/HTTP</span>';
+  document.getElementById('name-db').innerHTML = f.db + ' <span class="badge b-ext">externo</span>';
+
+  ['client','api','router','bo','query','commons','db'].forEach(id => setBox(id, '', '—'));
+  ['arr-0','arr-1','arr-2','arr-3','arr-4','arr-5'].forEach(id => setArrow(id, ''));
+
+  buildProgressBar(f.steps.length);
+  document.getElementById('prog-label').textContent = 'Paso 0 / ' + f.steps.length;
+  document.getElementById('step-counter').textContent = 'Paso 0 de ' + f.steps.length;
+  document.getElementById('exp-title').textContent = 'Listo — presiona Siguiente para comenzar';
+  document.getElementById('exp-body').textContent = 'Flujo: ' + f.endpoint + (f.multi ? ' (multi-fuente)' : '');
+  document.getElementById('btn-prev').disabled = true;
+  document.getElementById('btn-next').disabled = false;
+  document.getElementById('btn-next').textContent = 'Siguiente';
+  document.getElementById('btn-next').onclick = nextStep;
+}
+
+function nextStep() {
+  if (!currentFlow) currentFlow = flows[document.getElementById('sel-integ').value];
+  const f = currentFlow;
+  currentStep++;
+  if (currentStep >= f.steps.length) return;
+  const s = f.steps[currentStep];
+  setBox(s.box, s.cls, s.det);
+  if (s.arr) setArrow(s.arr, s.back ? 'lit-back' : 'lit');
+  document.getElementById('exp-title').textContent = s.title;
+  document.getElementById('exp-body').textContent = s.body;
+  updateProgress(currentStep, f.steps.length);
+  document.getElementById('btn-prev').disabled = false;
+  if (currentStep === f.steps.length - 1) {
+    document.getElementById('btn-next').textContent = 'Reiniciar';
+    document.getElementById('btn-next').onclick = resetFlow;
+  }
+}
+
+function prevStep() {
+  if (currentStep <= 0) { resetFlow(); return; }
+  currentStep--;
+  const f = currentFlow;
+  ['client','api','router','bo','query','commons','db'].forEach(id => setBox(id, '', '—'));
+  ['arr-0','arr-1','arr-2','arr-3','arr-4','arr-5'].forEach(id => setArrow(id, ''));
+  for (let i = 0; i <= currentStep; i++) {
+    const si = f.steps[i];
+    const cls = i < currentStep ? (si.cls.includes('err') ? 'done-err' : si.cls.includes('ok') ? 'done-ok' : 'waiting') : si.cls;
+    setBox(si.box, cls, si.det);
+    if (si.arr) setArrow(si.arr, si.back ? 'lit-back' : 'lit');
+  }
+  const s = f.steps[currentStep];
+  document.getElementById('exp-title').textContent = s.title;
+  document.getElementById('exp-body').textContent = s.body;
+  updateProgress(currentStep, f.steps.length);
+  document.getElementById('btn-prev').disabled = currentStep === 0;
+  document.getElementById('btn-next').textContent = 'Siguiente';
+  document.getElementById('btn-next').onclick = nextStep;
+}
+
+resetFlow();
+</script>
+</body>
+</html>
